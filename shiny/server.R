@@ -28,8 +28,8 @@ function(input, output, session) {
                           labelOptions = labelOptions(noHide = T, opacity = 0.60, textsize = "10px", direction = "center",
                                                       style = list("padding" = "0px")),
                           group = "Plaatsen Utrecht") %>% 
-      addMarkers(data = pics, lng = ~Lon, lat = ~Lat, popup = paste0("<img src = ", pics$relpath, " width='400'>"),
-                 group = "Foto's plaatsnaamborden", options = markerOptions(alt = pics$alt),
+      addMarkers(data = pics, popup = sprintf("<img src = '%s' width='400'>", pics$relpath),
+                 group = "Foto's plaatsnaamborden", 
                  popupOptions = popupOptions(minWidth = 420), icon = icons[pics$icon]) %>% 
       addPolylines(data = routes, group = "Fietsroutes") %>% 
       addLayersControl(position = "bottomleft", overlayGroups = c("Plaatsen Utrecht", "Foto's plaatsnaamborden", 
