@@ -28,7 +28,7 @@ function(input, output, session) {
                           labelOptions = labelOptions(noHide = T, opacity = 0.60, textsize = "10px", direction = "center",
                                                       style = list("padding" = "0px")),
                           group = "Plaatsen Utrecht") %>% 
-      addMarkers(data = pics, popup = sprintf("<img src = '%s' width='400'>", pics$relpath),
+      addMarkers(data = pics, popup = sprintf("<a href='%s' target='_blank' rel='noopener noreferrer'><img src = '%s' width='400'></a>", pics$bigpath, pics$relpath),
                  group = "Foto's plaatsnaamborden", 
                  popupOptions = popupOptions(minWidth = 420), icon = icons[pics$icon]) %>% 
       addPolylines(data = routes, group = "Fietsroutes") %>% 

@@ -1,30 +1,11 @@
 library(dplyr)
 library(sf)
 library(leaflet)
-library(RPostgreSQL)
+library(rpostgis)
 library(hexView)
+
+#setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 source("secrets.R")
-# allzips <- readRDS("data/superzip.rds")
-# allzips$latitude <- jitter(allzips$latitude)
-# allzips$longitude <- jitter(allzips$longitude)
-# allzips$college <- allzips$college * 100
-# allzips$zipcode <- formatC(allzips$zipcode, width=5, format="d", flag="0")
-# row.names(allzips) <- allzips$zipcode
-# 
-# cleantable <- allzips %>%
-#   select(
-#     City = city.x,
-#     State = state.x,
-#     Zipcode = zipcode,
-#     Rank = rank,
-#     Score = centile,
-#     Superzip = superzip,
-#     Population = adultpop,
-#     College = college,
-#     Income = income,
-#     Lat = latitude,
-#     Long = longitude
-#   )
 
 drv <- dbDriver("PostgreSQL")
 con <- dbConnect(drv, user = "postgres", password = password, host = host,
@@ -41,21 +22,20 @@ con <- dbConnect(drv, user = "postgres", password = password, host = host,
 
 res <- dbGetQuery(con, "SELECT * from geocycle.imagelocations;")
 pics <- st_as_sf(res, coords = c("longitude", "latitude"), crs = 4326) %>% mutate(icon = "pic") %>% 
-  mutate(relpath = sprintf("https://raw.githubusercontent.com/boukepieter/GeoCycling-images/main/%s.jpg", name))
+  mutate(relpath = sprintf("https://raw.githubusercontent.com/boukepieter/GeoCycling/main/data/processed/images/small/%s.jpg", name),
+         bigpath = sprintf("https://raw.githubusercontent.com/boukepieter/GeoCycling/main/data/processed/images/%s.jpg", name))
 
-#setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 plaatsen <- read.csv("data/plaatsen_nederland.csv", encoding = "UTF-8") %>% 
   filter(!is.na(Latitude)) %>% 
   mutate(label = Woonplaatsen)
 
 gemeentes <- st_read("data/gemeentes_utrecht.gpkg")
 
-routes <- st_read("data/plaatsenFietstochtGeodata.gpkg", layer = "gefietst_bunnik_wijkbijduurstede") %>% 
-  st_zm(drop = T, what = "ZM")
-
-# pics <- st_read("data/geopics.gpkg") %>% 
-#   mutate(relpath = paste0("", substring(gsub(" ", "", RelPath), 7))) %>% 
-#   mutate(alt = strsplit(Name, "\\.")[[1]][1]) %>% mutate(icon = "pic")
+query <- "SELECT gid, geom FROM geocycle.routes;" 
+routes <- pgGetGeom(con, name = c("geocycle","routes"), gid = "gid")
+routes <- st_as_sf(routes)
+# routes <- st_read("data/plaatsenFietstochtGeodata.gpkg", layer = "gefietst_bunnik_wijkbijduurstede") %>% 
+#   st_zm(drop = T, what = "ZM")
 
 icons <- iconList(
   pic = makeIcon("icon_photo_50px_red.png", "icon_photo_50px.png", 20, 20),
@@ -81,3 +61,25 @@ if (F){
                                                                 "Places Utrecht",
                                                              "Municipality borders"))
 }
+
+# allzips <- readRDS("data/superzip.rds")
+# allzips$latitude <- jitter(allzips$latitude)
+# allzips$longitude <- jitter(allzips$longitude)
+# allzips$college <- allzips$college * 100
+# allzips$zipcode <- formatC(allzips$zipcode, width=5, format="d", flag="0")
+# row.names(allzips) <- allzips$zipcode
+# 
+# cleantable <- allzips %>%
+#   select(
+#     City = city.x,
+#     State = state.x,
+#     Zipcode = zipcode,
+#     Rank = rank,
+#     Score = centile,
+#     Superzip = superzip,
+#     Population = adultpop,
+#     College = college,
+#     Income = income,
+#     Lat = latitude,
+#     Long = longitude
+#   )
