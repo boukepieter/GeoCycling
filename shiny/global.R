@@ -10,15 +10,6 @@ source("secrets.R")
 drv <- dbDriver("PostgreSQL")
 con <- dbConnect(drv, user = "postgres", password = password, host = host,
                  port = "5432", dbname = "geocycle")
-# res <- dbGetQuery(con, "SELECT imgname, encode(img, 'base64') AS image from geocycle.images;")
-# dir.create("images")
-# for (i in 1:length(res$image)){
-#   imageData <- res$image[i]
-#   imageDataDecoded <- jsonlite::base64_dec(imageData)
-#   loc <- sprintf("www/images/%s.jpg", res$imgname[i])
-#   print(loc)
-#   writeBin(imageDataDecoded, loc)
-# }
 
 res <- dbGetQuery(con, "SELECT * from geocycle.imagelocations;")
 pics <- st_as_sf(res, coords = c("longitude", "latitude"), crs = 4326) %>% mutate(icon = "pic") %>% 
@@ -28,6 +19,14 @@ pics <- st_as_sf(res, coords = c("longitude", "latitude"), crs = 4326) %>% mutat
 plaatsen <- read.csv("data/plaatsen_nederland.csv", encoding = "UTF-8") %>% 
   filter(!is.na(Latitude)) %>% 
   mutate(label = Woonplaatsen)
+
+query <- paste0("SELECT wpg.id, wpg.geom, wpg.gemnaam, wpg.naam, prov.statnaam ", 
+                "FROM geocycle.woonplaatsgrenzen AS wpg ",
+                "LEFT JOIN geocycle.provincies AS prov ",
+                "ON st_within(st_pointonsurface(wpg.geom), prov.geom) ",
+                "WHERE prov.statnaam = 'Utrecht';")
+woonplaatsgrenzen <- pgGetGeom(con, query = query)
+woonplaatsgrenzen <- st_as_sf(woonplaatsgrenzen)
 
 gemeentes <- st_read("data/gemeentes_utrecht.gpkg")
 
@@ -47,19 +46,21 @@ if (F){
     addTiles("https://tiles.wmflabs.org/osm-no-labels/{z}/{x}/{y}.png") %>%
     setView(lng = 5.12, lat = 52.09, zoom = 10) %>% 
     addPolygons(data = gemeentes, fillOpacity = 0, color = "black", weight = 2,
-                group = "Municipality borders", options = pathOptions(clickable = F)) %>% 
+                group = "Gemeentegrenzen", options = pathOptions(clickable = F)) %>% 
+    addPolygons(data = woonplaatsgrenzen, fillOpacity = 0, color = "black", weight = 1,
+                group = "Woonplaatsgrenzen", options = pathOptions(clickable = F)) %>% 
     addLabelOnlyMarkers(data = plaatsen, lng = ~Longitude, lat = ~Latitude, 
                         label = ~label,
                         labelOptions = labelOptions(noHide = T, opacity = 0.60, textsize = "10px", direction = "center",
                                                     style = list("padding" = "0px")),
-                        group = "Places Utrecht") %>% 
-    addMarkers(data = pics, popup = paste0("<img src = ", pics$relpath, " width='400'>"),
-               group = "Photo's of place name signs", 
+                        group = "Plaatsen Utrecht") %>% 
+    addMarkers(data = pics, popup = sprintf("<a href='%s' target='_blank' rel='noopener noreferrer'><img src = '%s' width='400'></a>", pics$bigpath, pics$relpath),
+               group = "Foto's plaatsnaamborden", 
                popupOptions = popupOptions(minWidth = 420), icon = icons[pics$icon]) %>% 
-    addPolylines(data = routes, group = "Bicycle routes") %>% 
-    addLayersControl(position = "bottomleft", overlayGroups = c("Photo's of place name signs", "Bicycle routes",
-                                                                "Places Utrecht",
-                                                             "Municipality borders"))
+    addPolylines(data = routes, group = "Fietsroutes") %>% 
+    addLayersControl(position = "bottomleft", overlayGroups = c("Plaatsen Utrecht", "Foto's plaatsnaamborden", 
+                                                                "Gemeentegrenzen", "Woonplaatsgrenzen",
+                                                                "Fietsroutes"))
 }
 
 # allzips <- readRDS("data/superzip.rds")
